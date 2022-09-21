@@ -277,6 +277,7 @@ mainMenu2.Closed = function()
 end
 
 local function MenuATM()
+    local retrait = xBank.MaxATM
     if open2 then
         open2 = false
         RageUI.Visible(mainMenu2, false)
@@ -330,28 +331,19 @@ local function MenuATM()
                             RageUI.Separator(("Votre IBAN: ~g~%s~s~"):format(v.iban))
                             RageUI.Separator(("Solde: ~g~%s$~s~"):format(v.solde))
                             RageUI.Line()
-                            RageUI.Button("Déposer de l'argent", nil, {RightLabel = "→"}, true, {
+                            RageUI.Button("Retirer de l'argent", ("Maximum: %s"):format(xBank.MaxATM), {RightLabel = "→"}, true, {
                                 onSelected = function()
                                     local count = KeyboardInput("Combien:", "", 6)
                                     if count ~= nil and count ~= "" then
                                         if tonumber(count) then
-                                            TriggerServerEvent("xBank:addMoney", v.identifier, v.money, tonumber(count), tonumber(v.iban))
-                                            LoginAccount(tonumber(iban), tonumber(mdp))
-                                        else
-                                            ESX.ShowNotification("(~r~Erreur~s~)\nMontant invalide.")
-                                        end
-                                    else
-                                        ESX.ShowNotification("(~r~Erreur~s~)\nMontant invalide.")
-                                    end
-                                end
-                            })
-                            RageUI.Button("Retirer de l'argent", nil, {RightLabel = "→"}, true, {
-                                onSelected = function()
-                                    local count = KeyboardInput("Combien:", "", 6)
-                                    if count ~= nil and count ~= "" then
-                                        if tonumber(count) then
-                                            TriggerServerEvent("xBank:removeMoney", v.identifier, v.money, tonumber(count), tonumber(v.iban))
-                                            LoginAccount(tonumber(iban), tonumber(mdp))
+                                            if (retrait - count) >= 0 then
+                                                retrait = retrait - count
+                                                TriggerServerEvent("xBank:removeMoney", v.identifier, v.money, tonumber(count), tonumber(v.iban))
+                                                LoginAccount(tonumber(iban), tonumber(mdp))
+                                                print(retrait)
+                                            else
+                                                ESX.ShowNotification("(~r~Erreur~s~)\nVous ne pouvez pas retirer dans un ATM.")
+                                            end
                                         else
                                             ESX.ShowNotification("(~r~Erreur~s~)\nMontant invalide.")
                                         end
