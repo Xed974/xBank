@@ -16,6 +16,7 @@ xBank = {
     MarkerSaute = false, 
     MarkerTourne = false,
 
+    MaxATM = 10000,
     Position = {
         vector3(149.81, -1040.76, 29.37)
     },
