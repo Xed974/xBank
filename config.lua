@@ -16,7 +16,7 @@ xBank = {
     MarkerSaute = false, 
     MarkerTourne = false,
 
-    MaxATM = 10000,
+    MaxATM = 10000, -- Montant maximal que vous pouvez retirer aux ATM
     Position = {
         vector3(149.81, -1040.76, 29.37)
     },
