@@ -164,7 +164,7 @@ AddEventHandler("xBank:virement", function(identifier, money, count, ibanTarget,
                             data.bank = data.bank + count
                             MySQL.Async.execute("UPDATE users SET accounts = @accounts WHERE identifier = @identifier", {
                                 ['@accounts'] = json.encode(data),
-                                ['@identifier'] = identifier
+                                ['@identifier'] = v.identifier
                             }, function()
                                 add = {
                                     type = "Virement",
