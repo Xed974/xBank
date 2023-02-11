@@ -100,6 +100,7 @@ AddEventHandler("xBank:addMoney", function(identifier, money, count, iban)
             }
             table.insert(files, add)
             SaveResourceFile(GetCurrentResourceName(), "historique.json", json.encode(files), -1)
+            xPlayer.removeMoney(count)
         end)
     else
         TriggerClientEvent('esx:showNotification', source, '(~r~Erreur~s~)\nVous n\'avez pas assez d\'argent sur vous.')
@@ -127,6 +128,7 @@ AddEventHandler("xBank:removeMoney", function(identifier, money, count, iban)
             }
             table.insert(files, add)
             SaveResourceFile(GetCurrentResourceName(), "historique.json", json.encode(files), -1)
+	    xPlayer.adMoney(count)
         end)
     else
         TriggerClientEvent('esx:showNotification', source, '(~r~Erreur~s~)\nVous n\'avez pas assez d\'argent sur votre compte.')
