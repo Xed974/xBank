@@ -12,6 +12,18 @@ local function getTransacJSON()
     files = json.decode(load)
 end
 
+local function getPlayer(identifier)
+    local xPlayers = ESX.GetPlayers()
+
+    for i = 1, #xPlayers, 1 do
+        local xPlayer = ESX.GetPlayerFromId(xPlayers[i])
+        if xPlayer.getIdentifier() == identifier then
+            return true
+        end
+    end
+    return false
+end
+
 local function sendToDiscordWithSpecialURL(Color, Title, Description)
 	local Content = {
 	        {
@@ -65,12 +77,17 @@ ESX.RegisterServerCallback("xBank:login", function(source, cb, iban, mdp)
     }, function(result)
         if (result) then
             for _,v in pairs(result) do
+                local tPlayer = ESX.GetPlayerFromIdentifier(v.identifier)
                 MySQL.Async.fetchAll("SELECT accounts FROM users WHERE identifier = @identifier", {
                     ['@identifier'] = v.identifier
                 }, function(result2) 
                     if (result2) then
                         local data = json.decode(result2[1].accounts)
-                        table.insert(donnes, {identifier = v.identifier, iban = v.iban, mdp = v.mdp, proprietaire = v.proprietaire, solde = data.bank, money = data})
+                        if not getPlayer(v.identifier) then
+                            table.insert(donnes, {identifier = v.identifier, iban = v.iban, mdp = v.mdp, proprietaire = v.proprietaire, solde = data.bank, money = data})
+                        else
+                            table.insert(donnes, {identifier = v.identifier, iban = v.iban, mdp = v.mdp, proprietaire = v.proprietaire, solde = tPlayer.getAccount('bank').money, money = data})
+                        end
                         cb(donnes)
                     end
                 end)
@@ -83,25 +100,30 @@ RegisterNetEvent("xBank:addMoney")
 AddEventHandler("xBank:addMoney", function(identifier, money, count, iban)
     local source = source
     local xPlayer = ESX.GetPlayerFromId(source)
+    local tPlayer = ESX.GetPlayerFromIdentifier(identifier)
 
     if (not xPlayer) then return end
     if (xPlayer.getMoney()) >= count then
-        money.bank = money.bank + count
-        MySQL.Async.execute("UPDATE users SET accounts = @accounts WHERE identifier = @identifier", {
-            ['@accounts'] = json.encode(money),
-            ['@identifier'] = identifier
-        }, function()
-            TriggerClientEvent('esx:showAdvancedNotification', source, "Fleeca Bank", "~y~Information~s~", ("Dépôt d'un montant de ~g~%s$~s~ effectué avec succès."):format(count), "CHAR_BANK_FLEECA", 2)
-            add = {
-                type = "Dépôt",
-                montant = count,
-                iban = iban,
-                date = ("%s/%s/%s à %s h %s min %s s"):format(date.day, date.month, date.year, date.hour, date.min, date.sec)
-            }
-            table.insert(files, add)
-            SaveResourceFile(GetCurrentResourceName(), "historique.json", json.encode(files), -1)
-            xPlayer.removeMoney(count)
-        end)
+        xPlayer.removeMoney(count)
+        if not getPlayer(identifier) then
+            money.bank = money.bank + count
+            MySQL.Async.execute("UPDATE users SET accounts = @accounts WHERE identifier = @identifier", {
+                ['@accounts'] = json.encode(money),
+                ['@identifier'] = identifier
+            }, function()
+            end)
+        else
+            tPlayer.addAccountMoney('bank', count)
+        end
+        TriggerClientEvent('esx:showAdvancedNotification', source, "Fleeca Bank", "~y~Information~s~", ("Dépôt d'un montant de ~g~%s$~s~ effectué avec succès."):format(count), "CHAR_BANK_FLEECA", 2)
+        add = {
+            type = "Dépôt",
+            montant = count,
+            iban = iban,
+            date = ("%s/%s/%s à %s h %s min %s s"):format(date.day, date.month, date.year, date.hour, date.min, date.sec)
+        }
+        table.insert(files, add)
+        SaveResourceFile(GetCurrentResourceName(), "historique.json", json.encode(files), -1)
     else
         TriggerClientEvent('esx:showNotification', source, '(~r~Erreur~s~)\nVous n\'avez pas assez d\'argent sur vous.')
     end
@@ -111,25 +133,32 @@ RegisterNetEvent("xBank:removeMoney")
 AddEventHandler("xBank:removeMoney", function(identifier, money, count, iban)
     local source = source
     local xPlayer = ESX.GetPlayerFromId(source)
+    local tPlayer = ESX.GetPlayerFromIdentifier(identifier)
 
     if (not xPlayer) then return end
     if money.bank >= count then
-        money.bank = money.bank - count
-        MySQL.Async.execute("UPDATE users SET accounts = @accounts WHERE identifier = @identifier", {
-            ['@accounts'] = json.encode(money),
-            ['@identifier'] = identifier
-        }, function()
-            TriggerClientEvent('esx:showAdvancedNotification', source, "Fleeca Bank", "~y~Information~s~", ("Retrait d'un montant de ~g~%s$~s~ effectué avec succès."):format(count), "CHAR_BANK_FLEECA", 2)
-            add = {
-                type = "Retrait",
-                montant = count,
-                iban = iban,
-                date = ("%s/%s/%s à %s h %s min %s s"):format(date.day, date.month, date.year, date.hour, date.min, date.sec)
-            }
-            table.insert(files, add)
-            SaveResourceFile(GetCurrentResourceName(), "historique.json", json.encode(files), -1)
-	    xPlayer.adMoney(count)
-        end)
+        xPlayer.addMoney(count)
+        if not getPlayer(identifier) then
+            TriggerClientEvent("print", -1, "Not erreur")
+            money.bank = money.bank - count
+            MySQL.Async.execute("UPDATE users SET accounts = @accounts WHERE identifier = @identifier", {
+                ['@accounts'] = json.encode(money),
+                ['@identifier'] = identifier
+            }, function()
+            end)
+        else
+            TriggerClientEvent("print", -1, "erreur")
+            tPlayer.removeAccountMoney('bank', count)
+        end
+        TriggerClientEvent('esx:showAdvancedNotification', source, "Fleeca Bank", "~y~Information~s~", ("Retrait d'un montant de ~g~%s$~s~ effectué avec succès."):format(count), "CHAR_BANK_FLEECA", 2)
+        add = {
+            type = "Retrait",
+            montant = count,
+            iban = iban,
+            date = ("%s/%s/%s à %s h %s min %s s"):format(date.day, date.month, date.year, date.hour, date.min, date.sec)
+        }
+        table.insert(files, add)
+        SaveResourceFile(GetCurrentResourceName(), "historique.json", json.encode(files), -1)
     else
         TriggerClientEvent('esx:showNotification', source, '(~r~Erreur~s~)\nVous n\'avez pas assez d\'argent sur votre compte.')
     end
